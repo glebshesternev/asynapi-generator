@@ -1,0 +1,87 @@
+asyncapi: 2.6.0
+info:
+    title: Document status monitoring
+    version: 1.0.0
+    description: desc
+servers:
+    general:
+        url: localhost:9092
+        protocol: SSL
+        bindings:
+            kafka:
+                bootstrapServers:
+                - localhost:9092
+                - localhost:9093
+                ssl:
+                    keyPassword: Zx123456
+                    keyStoreLocation: file:///etc/config/jks/mq.jks
+                    keyStorePassword: Zx123456
+                    trustStoreLocation: file:///etc/config/jks/mq.jks
+                    trustStorePassword: Zx123456
+channels:
+    monitoring.document-status:
+        servers:
+        - general
+        publish:
+            bindings:
+                kafka:
+                    autoOffsetReset: latest
+                    groupId: test-group
+                    enableAutoCommit: true
+                    fetchMaxWait: 500
+                    fetchMinSize: 1
+                    heartbeatInterval: 2000
+            message:
+                $ref: '#/components/messages/docStatusMessage'
+            operationId: fetchDocStatus
+        subscribe:
+            bindings:
+                kafka:
+                    retries: 3
+                    acks: all
+                    retryBackoff: 75
+                    maxInFlightRequestsPerConnection: 10000
+                    sendBuffer: -1
+                    receiveBuffer: -1
+                    compressionType: snappy
+            operationId: sendDocStatus
+            message:
+                $ref: '#/components/messages/docStatusMessage'
+        bindings:
+            kafka:
+                topic: monitoring.document-status
+components:
+    messages:
+        docStatusMessage:
+            name: Docuemnt Change Status Message
+            title: Message about status changing
+            contentType: application/json
+            payload:
+                $ref: '#/components/schemas/docStatusPayload'
+    schemas:
+        docStatusPayload:
+            type: object
+            required:
+            - emitter
+            - id
+            - status
+            - timestamp
+            properties:
+                emitter:
+                    type: string
+                    enum:
+                    - SDI
+                    - CNL
+                    - SVO
+                    - CONTRACT
+                    - TCS
+                id:
+                    type: string
+                    minLength: 1
+                    maxLength: 255
+                status:
+                    type: string
+                    minLength: 1
+                    maxLength: 255
+                timestamp:
+                    type: integer

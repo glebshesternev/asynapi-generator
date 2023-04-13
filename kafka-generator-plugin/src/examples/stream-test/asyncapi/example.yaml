@@ -1,0 +1,184 @@
+asyncapi: 2.6.0
+info:
+    title: title
+    version: 1.0.0
+    description: desc
+servers:
+    general:
+        url: localhost:9092
+        protocol: PLAINTEXT
+        bindings:
+            kafka:
+                bootstrapServers:
+                - localhost:9092
+                - localhost:9093
+channels:
+    utils.file-transfer-request:
+        servers:
+        - general
+        publish:
+            bindings:
+                kafka:
+                    autoOffsetReset: latest
+                    groupId: test-group
+                    enableAutoCommit: true
+                    fetchMaxWait: 1000
+                    fetchMinSize: 10000
+                    heartbeatInterval: 100
+            message:
+                $ref: '#/components/messages/transferRequest'
+            operationId: reciveFileTransferRequest
+        subscribe:
+            bindings:
+                kafka:
+                    acks: all
+                    enableAutoCommit: true
+                    batchSize: 10000
+            operationId: sendFileTransferRequest
+            message:
+                $ref: '#/components/messages/transferRequest'
+        bindings:
+            kafka:
+                topic: utils.file-transfer-request
+components:
+    messages:
+        transferRequest:
+            name: tranferRequest
+            title: transfer request
+            contentType: application/json
+            headers:
+                $ref: '#/components/schemas/transferRequestHeaders'
+            payload:
+                $ref: '#/components/schemas/transferRequestPayload'
+    schemas:
+        transferRequestHeaders:
+            type: object
+            required:
+            - digitalId
+            - userUuid
+            properties:
+                digitalId:
+                    type: string
+                userUuid:
+                    type: string
+                clientModule:
+                    type: string
+                    minLength: 1
+                    maxLength: 255
+        transferRequestPayload:
+            description: transfer request
+            type: object
+            required:
+            - initiator
+            - docTypeDictionary
+            - direction
+            - files
+            properties:
+                uuid:
+                    description: uuid
+                    type: string
+                initiator:
+                    description: initiator
+                    type: string
+                    maxLength: 255
+                isDeleteCephFileAfterTransfer:
+                    description: is delete Ceph file after transfer flag
+                    type: boolean
+                    default: false
+                state:
+                    description: state of transfer
+                    type: string
+                    enum:
+                    - NEW
+                    - WAIT
+                    - SUCCESS
+                    - ERROR
+                docTypeDictionary:
+                    description: document type
+                    type: string
+                direction:
+                    description: direction
+                    type: string
+                    enum:
+                    - CEPH_TO_ECM
+                    - ECM_TO_CEPH
+                files:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/fileTransferInfo'
+                objectStoreId:
+                    description: backet id
+                    type: string
+                isKeepEncryptedSignFilesInCeph:
+                    description: is keep encrypted sign files in Ceph flag
+                    type: boolean
+        fileTransferInfo:
+            description: File info
+            type: object
+            properties:
+                ecm:
+                    $ref: '#/components/schemas/ecmInfo'
+                ceph:
+                    $ref: '#/components/schemas/cephInfo'
+                signatures:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/signature'
+        cephInfo:
+            description: Ceph params
+            type: object
+            properties:
+                bucketName:
+                    description: Ceph path
+                    type: string
+                    maxLength: 255
+                fileId:
+                    description: Ceph id
+                    type: string
+                    maxLength: 255
+                secretKey:
+                    description: secret key
+                    type: string
+                    maxLength: 255
+                secretKeyMd5:
+                    description: Md5 secret key
+                    type: string
+                    maxLength: 255
+                encryptionAlgorithm:
+                    description: encryption algorithm
+                    type: string
+                    maxLength: 255
+                signFileId:
+                    deprecated: true # Устарело, нужно использовать fileTransferInfo.signatures. Оставлено для обратной совместимости
+                    description: signature identifier
+                    type: string
+                    maxLength: 255
+        ecmInfo:
+            type: object
+            properties:
+                nameEcm:
+                    type: string
+                    maxLength: 255
+                targetEcm:
+                    type: string
+                    maxLength: 255
+                fileId:
+                    type: string
+                contentType:
+                    type: string
+                    maxLength: 255
+                clazz:
+                    type: string
+                    maxLength: 255
+        signature:
+            description: sign
+            type: object
+            required:
+            - ceph
+            properties:
+                businessCode:
+                    description: Product code
+                    type: string
+                    maxLength: 255
+                ceph:
+                    $ref: '#/components/schemas/cephInfo'

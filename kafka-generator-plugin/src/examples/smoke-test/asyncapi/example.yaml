@@ -1,0 +1,72 @@
+asyncapi: 2.6.0
+info:
+    title: title
+    version: 1.0.0
+    description: desc
+servers:
+    general:
+        url: localhost:9092
+        protocol: PLAINTEXT
+        bindings:
+            kafka:
+                bootstrapServers:
+                - localhost:9092
+                - localhost:9093
+channels:
+    smoke-test:
+        servers:
+        - general
+        publish:
+            bindings:
+                kafka:
+                    autoOffsetReset: latest
+                    groupId: 3
+                    enableAutoCommit: true
+                    fetchMaxWait: 1000
+                    fetchMinSize: 50000
+                    heartbeatInterval: 100
+            message:
+                $ref: '#/components/schemas/contract'
+            operationId: getContract
+        subscribe:
+            bindings:
+                kafka:
+                    acks: all
+                    clientId: 3
+                    enableAutoCommit: true
+                    batchSize: 3000
+            operationId: sendContract
+            message:
+                $ref: '#/components/schemas/contract'
+        bindings:
+            kafka:
+                topic: smoke-test
+components:
+    messages:
+        contract:
+            name: InstallRequest
+            title: Request
+            contentType: application/json
+            payload:
+                $ref: '#/components/schemas/contractPayload'
+    schemas:
+        contractPayload:
+            type: object
+            properties:
+                id:
+                    type: array
+                    items:
+                        type: integer
+                amounts:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/amount'
+                amount:
+                    type: integer
+        amount:
+            type: object
+            properties:
+                sum:
+                    type: number
+                currency:
+                    type: string

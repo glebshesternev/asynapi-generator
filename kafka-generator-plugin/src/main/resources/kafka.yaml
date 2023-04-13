@@ -1,0 +1,91 @@
+asyncapi: 2.6.0
+info:
+  title: title
+  version: 1.0.0
+  description: desc
+servers:
+  pprb.general:
+    bindings:
+      kafka:
+        bootstrapServers:
+        - tvldq-pprb01189.delta.sbrf.ru:9092
+        - tvldq-pprb01191.delta.sbrf.ru:9092
+        - tvldq-pprb01190.delta.sbrf.ru:9092
+        security:
+          keyPassword: { }
+          keyStoreCertificateChain: { }
+          keyStoreKey: { }
+          keyStoreLocation: { }
+          keyStorePassword: { }
+          keyStoreType: { }
+          trustStoreCertificates: { }
+          trustStoreLocation: { }
+          trustStorePassword: { }
+          trustStoreType: { }
+          protocol: PLAINTEXT
+channels:
+  curcontrol.example:
+    servers:
+    - pprb.general
+    publish:
+      bindings:
+        kafka:
+          producer:
+            acks: latest
+            client-id: 3
+            enableAutoCommit: true
+      message:
+        $ref: '#/components/schemas/response'
+      operationId: getContract
+    subscribe:
+      bindings:
+        kafka:
+          consumer:
+            autoOffsetReset: latest
+            bootstrapServers:
+            - wer
+            - wer
+            - er
+            group-id: 3
+            enableAutoCommit: true
+      operationId: sendResponse
+      message:
+        $ref: '#/components/schemas/contract'
+    bindings:
+      kafka:
+        topic: __curcontrol.tcs
+        properties:
+          retention: latest
+          maxMessage: latest
+          partitionCount: latest
+          replicaCount: latest
+components:
+  messages:
+    contract:
+      summary: create contract task msg
+      payload:
+        $ref: '#/components/schemas/contractPayload'
+    response:
+      summary: ok response
+      payload:
+        $ref: '#/components/schemas/okPayload'
+  schemas:
+    contractPayload:
+      type: object
+      properties:
+        id:
+          type: integer
+        amount:
+          $ref: '#/components/schemas/amount'
+    amount:
+      type: object
+      properties:
+        sum:
+          type: number
+        currency:
+          type: string
+    okPayload:
+      type: object
+      properties:
+        success:
+          type: boolean

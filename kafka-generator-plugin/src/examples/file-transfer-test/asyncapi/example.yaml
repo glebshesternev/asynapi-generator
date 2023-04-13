@@ -1,0 +1,217 @@
+asyncapi: 2.6.0
+info:
+    title: title
+    version: 1.0.0
+    description: desc
+servers:
+    pprb.general:
+        url: localhost:9092
+        protocol: PLAINTEXT
+        bindings:
+            kafka:
+                bootstrapServers:
+                - localhost:9092
+                - localhost:9093
+                ssl:
+                    keyPassword: Zx123456
+                    keyStoreLocation: file:///etc/config/jks/mq.jks
+                    keyStorePassword: Zx123456
+                    trustStoreLocation: file:///etc/config/jks/mq.jks
+                    trustStorePassword: Zx123456
+channels:
+    common-utils.file-trasfer.create-transfer-request:
+        servers:
+        - pprb.general
+        publish:
+            bindings:
+                kafka:
+                    autoOffsetReset: latest
+                    groupId: test-group
+                    enableAutoCommit: true
+                    fetchMaxWait: 500
+                    fetchMinSize: 1
+                    heartbeatInterval: 2000
+                    backoffInitial: 2000
+                    backoffMax: 10000
+                    backoffMultiplier: 1
+                    backoffRetries: 10
+            message:
+                $ref: '#/components/messages/transferRequestCreate'
+            operationId: reciveFileTransferRequest
+        subscribe:
+            bindings:
+                kafka:
+                    retries: 3
+                    acks: all
+                    retryBackoff: 75
+                    maxInFlightRequestsPerConnection: 10000
+                    sendBuffer: -1
+                    receiveBuffer: -1
+                    compressionType: snappy
+            operationId: sendFileTransferRequest
+            message:
+                $ref: '#/components/messages/transferRequestCreate'
+        bindings:
+            kafka:
+                topic: common-utils.file-trasfer.create-transfer-request
+    common-utils.file-trasfer.transfer-status:
+        servers:
+        - pprb.general
+        publish:
+            bindings:
+                kafka:
+                    autoOffsetReset: latest
+                    groupId: test-group
+                    enableAutoCommit: true
+                    fetchMaxWait: 500
+                    fetchMinSize: 1
+                    heartbeatInterval: 2000
+            message:
+                $ref: '#/components/messages/transferRequestStatus'
+            operationId: reciveFileTransferStatus
+        subscribe:
+            bindings:
+                kafka:
+                    retries: 3
+                    acks: all
+                    retryBackoff: 75
+                    maxInFlightRequestsPerConnection: 10000
+                    sendBuffer: -1
+                    receiveBuffer: -1
+                    compressionType: snappy
+            operationId: sendFileTransferStatus
+            message:
+                $ref: '#/components/messages/transferRequestStatus'
+        bindings:
+            kafka:
+                topic: common-utils.file-trasfer.transfer-status
+components:
+    messages:
+        transferRequestCreate:
+            name: tranferRequestCreate
+            title: transfer request
+            contentType: application/json
+            headers:
+                $ref: '#/components/schemas/transferRequestHeaders'
+            payload:
+                $ref: '#/components/schemas/transferRequestPayload'
+        transferRequestStatus:
+            name: tranferRequestStatus
+            title: transfer status
+            contentType: application/json
+            payload:
+                $ref: '#/components/schemas/transferRequestPayload'
+    schemas:
+        transferRequestHeaders:
+            type: object
+            required:
+            - digitalId
+            - userUuid
+            properties:
+                digitalId:
+                    type: string
+                userUuid:
+                    type: string
+                clientModule:
+                    type: string
+                    minLength: 1
+                    maxLength: 255
+        transferRequestPayload:
+            type: object
+            required:
+            - initiator
+            - docTypeDictionary
+            - direction
+            - files
+            properties:
+                uuid:
+                    type: string
+                initiator:
+                    type: string
+                    maxLength: 255
+                isDeleteCephFileAfterTransfer:
+                    type: boolean
+                    default: false
+                state:
+                    type: string
+                    enum:
+                    - NEW
+                    - WAIT
+                    - SUCCESS
+                    - ERROR
+                docTypeDictionary:
+                    type: string
+                direction:
+                    type: string
+                    enum:
+                    - CEPH_TO_ECM
+                    - ECM_TO_CEPH
+                files:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/fileTransferInfo'
+                objectStoreId:
+                    type: string
+                isKeepEncryptedSignFilesInCeph:
+                    type: boolean
+        fileTransferInfo:
+            type: object
+            properties:
+                ecm:
+                    $ref: '#/components/schemas/ecmInfo'
+                ceph:
+                    $ref: '#/components/schemas/cephInfo'
+                signatures:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/signature'
+        cephInfo:
+            type: object
+            properties:
+                bucketName:
+                    type: string
+                    maxLength: 255
+                fileId:
+                    type: string
+                    maxLength: 255
+                secretKey:
+                    type: string
+                    maxLength: 255
+                secretKeyMd5:
+                    type: string
+                    maxLength: 255
+                encryptionAlgorithm:
+                    type: string
+                    maxLength: 255
+                signFileId:
+                    deprecated: true # Устарело, нужно использовать fileTransferInfo.signatures. Оставлено для обратной совместимости
+                    type: string
+                    maxLength: 255
+        ecmInfo:
+            description: Информация о файле в ЕСМ
+            type: object
+            properties:
+                nameEcm:
+                    type: string
+                    maxLength: 255
+                targetEcm:
+                    type: string
+                    maxLength: 255
+                fileId:
+                    type: string
+                contentType:
+                    type: string
+                    maxLength: 255
+                clazz:
+                    type: string
+                    maxLength: 255
+        signature:
+            type: object
+            required:
+            - ceph
+            properties:
+                businessCode:
+                    type: string
+                    maxLength: 255
+                ceph:
+                    $ref: '#/components/schemas/cephInfo'
